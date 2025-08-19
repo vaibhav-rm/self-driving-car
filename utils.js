@@ -52,3 +52,11 @@ function getRandomColor(){
     const hue=290+Math.random()*260;
     return "hsl("+hue+", 100%, 60%)";
 }
+
+function getScore(car){
+    let score = 0;
+    score += -car.y;                     // main objective: go forward
+    score += car.speed * 50;             // reward for moving fast
+    if(car.damaged) score -= 10000;      // big penalty if crashed
+    return score;
+}
