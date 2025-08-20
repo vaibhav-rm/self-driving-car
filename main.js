@@ -77,6 +77,37 @@ function generateTraffic(count){
 
 animate();
 
+function saveBestCar(){
+    const data = JSON.stringify(bestCar.brain);
+    const blob = new Blob([data], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "bestCarBrain.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+function loadBestCar(event){
+    const file = event.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e){
+        const data = JSON.parse(e.target.result);
+        for(let i=0;i<cars.length;i++){
+            cars[i].brain = JSON.parse(JSON.stringify(data));
+            if(i!=0){
+                NeuralNetwork.mutate(cars[i].brain,0.1);
+            }
+        }
+        bestCar = cars[0];
+    };
+    reader.readAsText(file);
+}
+
 function save(){
     localStorage.setItem("bestBrain",
         JSON.stringify(bestCar.brain));
@@ -138,6 +169,13 @@ function animate(time){
     carCtx.fillStyle = "black";
     carCtx.font = "20px Arial";
     carCtx.fillText("Score: " + Math.floor(bestCar.score), 10, 30);
+
+
+    // Fixed HUD: show speed
+    carCtx.fillStyle = "black";
+    carCtx.font = "20px Arial";
+    carCtx.fillText("Speed: " + bestCar.speed.toFixed(2), 10, 60);
+
 
     networkCtx.lineDashOffset=-time/50;
     Visualizer.drawNetwork(networkCtx,bestCar.brain);

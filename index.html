@@ -11,6 +11,12 @@
     <div id="verticalButtons">
         <button onclick="save()">💾</button>
         <button onclick="discard()">🗑️</button>
+        <button onclick="saveBestCar()">⬇️</button>
+        <input type="file" id="importBrain" accept=".json">
+    <script>
+        document.getElementById("importBrain").addEventListener("change", loadBestCar);
+    </script>
+
     </div>
     <canvas id="networkCanvas"></canvas>
     <script src="visualizer.js"></script>

@@ -8,6 +8,8 @@ body {
 }
 
 #verticalButtons{
+    max-width: 5 px;
+    height: 10 px;
     display:flex;
     flex-direction:column;
 }
