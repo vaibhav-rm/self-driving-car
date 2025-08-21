@@ -3,8 +3,16 @@ carCanvas.width=200;
 const networkCanvas=document.getElementById("networkCanvas");
 networkCanvas.width=600;
 
+// global trackers
+let generation = 1;
+let bestScoreEver = 0;
+let scoreHistory = [];
+
+
 const carCtx = carCanvas.getContext("2d");
 const networkCtx = networkCanvas.getContext("2d");
+
+const statsCtx = document.getElementById("statsCanvas").getContext("2d");
 
 const road = new Road(carCanvas.width/2,carCanvas.width*0.9);
 let traffic = []
@@ -126,9 +134,14 @@ function generateCars(N){
     return cars;
 }
 
+// set bigger canvas in HTML
+// <canvas id="statsCanvas" width="400" height="300"></canvas>
+
+
 function animate(time){
     let bestScore = -Infinity;
     updateTraffic();
+
     for(let i=0;i<traffic.length;i++){
         traffic[i].update(road.borders,[]);
     }
@@ -141,10 +154,12 @@ function animate(time){
             bestCar = cars[i];
         }
     }
-    bestCar=cars.find(
-        c=>c.y==Math.min(
-            ...cars.map(c=>c.y)
-        ));
+
+    bestCar=cars.find(c=>c.y==Math.min(...cars.map(c=>c.y)));
+
+    if(bestScore > bestScoreEver){
+        bestScoreEver = bestScore;
+    }
 
     carCanvas.height=window.innerHeight;
     networkCanvas.height=window.innerHeight;
@@ -165,19 +180,78 @@ function animate(time){
 
     carCtx.restore();
 
-    // Fixed HUD score
-    carCtx.fillStyle = "black";
-    carCtx.font = "20px Arial";
-    carCtx.fillText("Score: " + Math.floor(bestCar.score), 10, 30);
+    // === STATS HUD ===
+    statsCtx.clearRect(0,0,800,600);
 
+    // background panel
+    statsCtx.fillStyle = "rgba(20,20,20,0.9)";
+    statsCtx.fillRect(0,0,800,600   );
 
-    // Fixed HUD: show speed
-    carCtx.fillStyle = "black";
-    carCtx.font = "20px Arial";
-    carCtx.fillText("Speed: " + bestCar.speed.toFixed(2), 10, 60);
+    statsCtx.strokeStyle = "white";
+    statsCtx.lineWidth = 2;
+    statsCtx.strokeRect(0,0,800,600);
 
+    // Title
+    statsCtx.fillStyle = "white";
+    statsCtx.font = "22px Arial Black";
+    statsCtx.fillText("🚗 Simulation Dashboard", 20, 35);
 
+    // Section 1: Simulation Info
+    statsCtx.font = "16px Arial";
+    statsCtx.fillStyle = "lime";
+    statsCtx.fillText("Generation: " + generation, 20, 70);
+    statsCtx.fillText("Alive Cars: " + cars.filter(c => !c.damaged).length + "/" + cars.length, 20, 95);
+
+    // Section 2: Performance
+    statsCtx.fillStyle = "yellow";
+    statsCtx.fillText("Current Score: " + Math.floor(bestCar.score), 20, 135);
+    statsCtx.fillText("Best Score: " + Math.floor(bestScoreEver), 20, 160);
+
+    // compute avg
+    const aliveScores = cars.map(c => c.score);
+    const avgScore = aliveScores.reduce((a,b)=>a+b,0)/aliveScores.length;
+    statsCtx.fillText("Avg Score: " + Math.floor(avgScore), 20, 185);
+
+    // Section 3: Car Status
+    statsCtx.fillStyle = "cyan";
+    statsCtx.fillText("Speed: " + bestCar.speed.toFixed(2) + " / " + bestCar.maxSpeed, 20, 225);
+
+    // speed bar
+    const barX=150, barY=215, barW=200, barH=15;
+    statsCtx.fillStyle="gray";
+    statsCtx.fillRect(barX, barY, barW, barH);
+    statsCtx.fillStyle="cyan";
+    const ratio = Math.max(0, bestCar.speed/bestCar.maxSpeed);
+    statsCtx.fillRect(barX, barY, barW*ratio, barH);
+    statsCtx.strokeStyle="white";
+    statsCtx.strokeRect(barX, barY, barW, barH);
+
+    // damage status
+    statsCtx.fillStyle = bestCar.damaged ? "red" : "lime";
+    statsCtx.fillText("Status: " + (bestCar.damaged ? "Crashed" : "Running"), 20, 260);
+
+    // Section 4: Score trend (mini chart)
+    scoreHistory.push(bestScore);
+    if(scoreHistory.length>50) scoreHistory.shift();
+
+    const chartX=300, chartY=70, chartW=90, chartH=80;
+    statsCtx.strokeStyle="white";
+    statsCtx.strokeRect(chartX, chartY, chartW, chartH);
+
+    statsCtx.beginPath();
+    statsCtx.strokeStyle="orange";
+    statsCtx.moveTo(chartX, chartY+chartH);
+    for(let i=0;i<scoreHistory.length;i++){
+        const val = scoreHistory[i]/(bestScoreEver||1); // normalize
+        const x = chartX + (i/50)*chartW;
+        const y = chartY+chartH - val*chartH;
+        statsCtx.lineTo(x,y);
+    }
+    statsCtx.stroke();
+
+    // draw network
     networkCtx.lineDashOffset=-time/50;
     Visualizer.drawNetwork(networkCtx,bestCar.brain);
+
     requestAnimationFrame(animate);
 }
